@@ -3,6 +3,7 @@ const searchInput = document.getElementById("search");
 const uploadForm = document.getElementById("upload-form");
 const uploadFeedback = document.getElementById("upload-feedback");
 const uploadModal = document.getElementById("upload-modal");
+const dragOverlay = document.getElementById("drag-overlay");
 const playerInfo = document.getElementById("player-info");
 const playerArtist = document.getElementById("player-artist");
 const playerQuality = document.getElementById("player-quality-subtle");
@@ -586,14 +587,52 @@ window.addEventListener("keydown", (event) => {
   }
 });
 window.addEventListener("beforeunload", savePlayback);
-fileInput.addEventListener("change", () => {
-  const file = fileInput.files[0];
+function applyFileMetadata(file) {
   if (!file) return;
   const [artist, ...title] = file.name.replace(/\.[^.]+$/, "").split(" - ");
   if (title.length) {
     uploadForm.elements.artist.value = artist.trim();
     uploadForm.elements.title.value = title.join(" - ").trim();
   }
+}
+fileInput.addEventListener("change", () => applyFileMetadata(fileInput.files[0]));
+
+let dragCounter = 0;
+function isFileDrag(event) {
+  return event.dataTransfer && Array.from(event.dataTransfer.types).includes("Files");
+}
+window.addEventListener("dragenter", (event) => {
+  if (!isFileDrag(event)) return;
+  event.preventDefault();
+  dragCounter++;
+  dragOverlay.classList.add("visible");
+});
+window.addEventListener("dragover", (event) => {
+  if (!isFileDrag(event)) return;
+  event.preventDefault();
+});
+window.addEventListener("dragleave", (event) => {
+  if (!isFileDrag(event)) return;
+  dragCounter--;
+  if (dragCounter <= 0) {
+    dragCounter = 0;
+    dragOverlay.classList.remove("visible");
+  }
+});
+window.addEventListener("drop", (event) => {
+  if (!isFileDrag(event)) return;
+  event.preventDefault();
+  dragCounter = 0;
+  dragOverlay.classList.remove("visible");
+  const file = Array.from(event.dataTransfer.files).find((f) =>
+    f.type.startsWith("audio/"),
+  );
+  if (!file) return;
+  const transfer = new DataTransfer();
+  transfer.items.add(file);
+  fileInput.files = transfer.files;
+  applyFileMetadata(file);
+  openModal(uploadModal);
 });
 uploadForm.addEventListener("submit", async (event) => {
   event.preventDefault();

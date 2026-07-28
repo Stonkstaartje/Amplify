@@ -116,6 +116,49 @@ button {
   display: flex;
 }
 
+.drag-overlay {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(8, 12, 18, 0.85);
+  z-index: 80;
+  pointer-events: none;
+}
+
+.drag-overlay.visible {
+  display: flex;
+}
+
+.drag-overlay-box {
+  width: 100%;
+  max-width: 480px;
+  padding: 48px;
+  border: 3px dashed #1db954;
+  border-radius: 28px;
+  background: rgba(29, 185, 84, 0.08);
+  text-align: center;
+}
+
+.drag-overlay-icon {
+  font-size: 3rem;
+  color: #1db954;
+  margin-bottom: 12px;
+}
+
+.drag-overlay-title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin: 0 0 8px;
+}
+
+.drag-overlay-subtitle {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.6);
+}
+
 .modal-dialog {
   width: 100%;
   max-width: 540px;
