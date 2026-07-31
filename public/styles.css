@@ -1,3 +1,11 @@
+:root {
+  --color-primary: #3b82f6;
+  --color-primary-rgb: 59, 130, 246;
+  --color-primary-dark: #2563eb;
+  --color-secondary: #3b82f6;
+  --color-secondary-rgb: 59, 130, 246;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -11,7 +19,7 @@ body {
     -apple-system,
     BlinkMacSystemFont,
     sans-serif;
-  background: #081214;
+  background: #0b1014;
   color: #ffffff;
 }
 
@@ -95,7 +103,7 @@ button {
   padding: 11px 18px;
   border-radius: 999px;
   border: none;
-  background: #1db954;
+  background: var(--color-primary);
   color: #081214;
   cursor: pointer;
   font-weight: 700;
@@ -136,15 +144,15 @@ button {
   width: 100%;
   max-width: 480px;
   padding: 48px;
-  border: 3px dashed #1db954;
+  border: 3px dashed var(--color-secondary);
   border-radius: 28px;
-  background: rgba(29, 185, 84, 0.08);
+  background: rgba(var(--color-secondary-rgb), 0.08);
   text-align: center;
 }
 
 .drag-overlay-icon {
   font-size: 3rem;
-  color: #1db954;
+  color: var(--color-secondary);
   margin-bottom: 12px;
 }
 
@@ -246,7 +254,7 @@ button {
 .playlist-create {
   padding: 8px 14px;
   border-radius: 999px;
-  background: #1db954;
+  background: var(--color-primary);
   color: #081214;
   border: none;
   cursor: pointer;
@@ -367,7 +375,7 @@ button {
   justify-content: center;
   gap: 0.5rem;
   padding: 12px 18px;
-  background: #1db954;
+  background: var(--color-primary);
   color: #081214;
   border: none;
   border-radius: 999px;
@@ -527,7 +535,7 @@ button:hover {
 }
 
 .track-card:hover .track-number {
-  background: rgba(29, 185, 84, 0.8);
+  background: rgba(var(--color-secondary-rgb), 0.8);
   color: #ffffff;
 }
 
@@ -624,8 +632,8 @@ button:hover {
 }
 
 .track-card.active {
-  background: rgba(29, 185, 84, 0.12);
-  border-color: rgba(29, 185, 84, 0.24);
+  background: rgba(var(--color-secondary-rgb), 0.12);
+  border-color: rgba(var(--color-secondary-rgb), 0.24);
 }
 
 .track-card:hover {
@@ -690,16 +698,16 @@ button:hover {
 }
 
 .player-quality.lossless {
-  color: #1db954;
+  color: var(--color-secondary);
   font-weight: 600;
 }
 
 .player-quality.very_high {
-  color: #1db954;
+  color: var(--color-secondary);
 }
 
 .player-quality.high {
-  color: #1db954;
+  color: var(--color-secondary);
 }
 
 .player-quality.medium {
@@ -734,7 +742,7 @@ button:hover {
 }
 
 .upload-submit {
-  background: linear-gradient(90deg, #1db954, #0aa34a);
+  background: linear-gradient(90deg, var(--color-primary), var(--color-primary-dark));
   color: #081214;
   border: none;
   padding: 10px 14px;
@@ -798,11 +806,13 @@ button:hover {
 .progress-bar::-moz-range-track,
 .volume-slider::-moz-range-track {
   background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
 }
 
 .progress-bar::-webkit-slider-runnable-track,
 .volume-slider::-webkit-slider-runnable-track {
   background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
 }
 
 .progress-bar::-webkit-slider-thumb,
@@ -812,7 +822,7 @@ button:hover {
   height: 14px;
   border-radius: 50%;
   background: #ffffff;
-  border: 2px solid #1db954;
+  border: 2px solid var(--color-primary);
   cursor: pointer;
 }
 
@@ -822,7 +832,7 @@ button:hover {
   height: 14px;
   border-radius: 50%;
   background: #ffffff;
-  border: 2px solid #1db954;
+  border: 2px solid var(--color-primary);
   cursor: pointer;
 }
 
@@ -1001,7 +1011,7 @@ button:hover {
   }
   .playlist-item.active,
   .playlist-row.active .playlist-item {
-    background: #1db954;
+    background: var(--color-primary);
     color: #081214;
   }
   .playlist-menu-button {
@@ -1083,7 +1093,7 @@ button:hover {
     border-color: transparent;
   }
   .track-card.active {
-    background: rgba(29, 185, 84, 0.12);
+    background: rgba(var(--color-secondary-rgb), 0.12);
     border-color: transparent;
   }
 

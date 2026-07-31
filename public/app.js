@@ -252,6 +252,69 @@ function setTrack(index, { autoplay = true, position = 0 } = {}) {
   playerInfo.textContent = track.title || "";
   playerArtist.textContent = track.artist || "";
   updatePlayerCover(track);
+  // Media Session API
+if ("mediaSession" in navigator) {
+  navigator.mediaSession.metadata = new MediaMetadata({
+    title: track.title || "",
+    artist: track.artist || "",
+    album: track.album || "",
+    artwork: track.cover_filename
+      ? [
+          {
+            src: `/uploads/${encodeURIComponent(track.cover_filename)}`,
+            sizes: "512x512",
+            type: "image/png",
+          },
+        ]
+      : [],
+  });
+
+  // Play
+  navigator.mediaSession.setActionHandler("play", () => {
+    audioPlayer.play();
+  });
+
+  // Pauze
+  navigator.mediaSession.setActionHandler("pause", () => {
+    audioPlayer.pause();
+  });
+
+  // Vorige nummer
+  navigator.mediaSession.setActionHandler("previoustrack", () => {
+    const i = currentTrackIndex();
+    if (i > 0) setTrack(i - 1);
+  });
+
+  // Volgende nummer
+  navigator.mediaSession.setActionHandler("nexttrack", () => {
+    const i = currentTrackIndex();
+    if (i >= 0 && i < tracks.length - 1) {
+      setTrack(i + 1);
+    }
+  });
+
+  // Vooruit/achteruit zoeken (indien ondersteund)
+  navigator.mediaSession.setActionHandler("seekbackward", (details) => {
+    audioPlayer.currentTime = Math.max(
+      audioPlayer.currentTime - (details.seekOffset || 10),
+      0
+    );
+  });
+
+  navigator.mediaSession.setActionHandler("seekforward", (details) => {
+    audioPlayer.currentTime = Math.min(
+      audioPlayer.currentTime + (details.seekOffset || 10),
+      audioPlayer.duration || 0
+    );
+  });
+
+  navigator.mediaSession.setActionHandler("seekto", (details) => {
+    if (details.seekTime != null) {
+      audioPlayer.currentTime = details.seekTime;
+    }
+  });
+  }
+	
   currentTimeLabel.textContent = "0:00";
   durationLabel.textContent = `-${formatTime(track.duration_seconds)}`;
   seekBar.value = 0;
@@ -452,7 +515,7 @@ function updateRangeFill(range) {
     ((Number(range.value) - Number(range.min || 0)) /
       (Number(range.max || 100) - Number(range.min || 0))) *
     100;
-  range.style.background = `linear-gradient(90deg, #1db954 ${percent}%, rgba(255,255,255,.12) ${percent}%)`;
+  range.style.background = `linear-gradient(90deg, #bab8b8 ${percent}%, rgba(255,255,255,.12) ${percent}%)`;
 }
 
 function savePlayback() {
