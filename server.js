@@ -16,6 +16,7 @@ const DB_PASS = process.env.DB_PASS || 'AwTLgn7up2ZPWSGUXtQg';
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || '*';
 const MAX_UPLOAD_MB = parseInt(process.env.MAX_UPLOAD_MB, 10) || 100;
 const UPLOAD_DIR = path.join(__dirname, 'uploads');
+const COVER_LOOKUP_TIMEOUT_MS = parseInt(process.env.COVER_LOOKUP_TIMEOUT_MS, 10) || 2000;
 
 const app = express();
 app.use(express.json());
@@ -111,6 +112,48 @@ function mapAudioMimeType(filename) {
   }
 }
 
+// Automatisch een albumhoes zoeken via de (gratis, key-loze) iTunes Search API
+// wanneer de gebruiker zelf geen hoesfoto heeft geüpload. Faalt dit, dan blijft
+// de track gewoon zonder cover staan en kan die later handmatig toegevoegd worden.
+async function fetchAlbumArt(artist, title, timeoutMs = COVER_LOOKUP_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const query = encodeURIComponent(`${artist} ${title}`);
+    const searchResponse = await fetch(
+      `https://itunes.apple.com/search?term=${query}&media=music&entity=song&limit=1`,
+      { signal: controller.signal },
+    );
+    if (!searchResponse.ok) return null;
+
+    const data = await searchResponse.json();
+    const artworkUrl100 = data.results?.[0]?.artworkUrl100;
+    if (!artworkUrl100) return null;
+
+    // iTunes geeft standaard een 100x100 thumbnail; deze URL-vorm ondersteunt
+    // ook grotere afmetingen door het formaat in de bestandsnaam te vervangen.
+    const artworkUrl = artworkUrl100.replace('100x100', '600x600');
+    const imageResponse = await fetch(artworkUrl, { signal: controller.signal });
+    if (!imageResponse.ok) return null;
+
+    return Buffer.from(await imageResponse.arrayBuffer());
+  } catch (error) {
+    if (error.name !== 'AbortError') {
+      console.error(`Albumart ophalen mislukt voor "${artist} - ${title}":`, error.message);
+    }
+    return null;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+function saveCoverBuffer(buffer) {
+  const filename = `${Date.now()}-${Math.round(Math.random() * 1e9)}.jpg`;
+  fs.writeFileSync(path.join(UPLOAD_DIR, filename), buffer);
+  return filename;
+}
+
 app.get('/api/tracks', async (req, res) => {
   try {
     const q = (req.query.q || '').trim();
@@ -138,13 +181,26 @@ app.post('/api/tracks', upload.fields([{ name: 'audio', maxCount: 1 }, { name: '
 
   const { title = '', artist = 'Onbekend', album = '', duration_seconds = 0 } = req.body;
   const trackTitle = title.trim() || path.parse(audioFile.originalname).name;
+  const trackArtist = artist.trim() || 'Onbekend';
+
+  let coverFilename = coverFile?.filename || null;
 
   try {
     const [result] = await db.execute(
       'INSERT INTO tracks (title, artist, album, duration_seconds, filename, cover_filename) VALUES (?, ?, ?, ?, ?, ?)',
-      [trackTitle, artist.trim() || 'Onbekend', album.trim(), Number(duration_seconds) || 0, audioFile.filename, coverFile?.filename || null]
+      [trackTitle, trackArtist, album.trim(), Number(duration_seconds) || 0, audioFile.filename, coverFilename]
     );
     const [rows] = await db.query('SELECT id, title, artist, album, duration_seconds, filename, cover_filename, created_at FROM tracks WHERE id = ?', [result.insertId]);
+
+    if (!coverFilename) {
+      void (async () => {
+        const artBuffer = await fetchAlbumArt(trackArtist, trackTitle);
+        if (!artBuffer) return;
+        const savedCoverFilename = saveCoverBuffer(artBuffer);
+        await db.execute('UPDATE tracks SET cover_filename = ? WHERE id = ?', [savedCoverFilename, result.insertId]);
+      })();
+    }
+
     res.status(201).json({ track: rows[0] });
   } catch (error) {
     res.status(500).json({ error: 'Kon track niet opslaan' });
@@ -320,6 +376,45 @@ app.get('/api/tracks/:id', async (req, res) => {
     res.json({ track: rows[0] });
   } catch (error) {
     res.status(500).json({ error: 'Kan track niet ophalen' });
+  }
+});
+
+app.patch('/api/tracks/:id', upload.single('cover'), async (req, res) => {
+  const trackId = req.params.id;
+  const { title = '', artist = '', album = '' } = req.body;
+  const trimmedTitle = title.trim();
+  const trimmedArtist = artist.trim();
+  try {
+    const [rows] = await db.query('SELECT cover_filename FROM tracks WHERE id = ?', [trackId]);
+    if (!rows[0]) {
+      return res.status(404).json({ error: 'Track niet gevonden' });
+    }
+
+    if (!trimmedTitle) {
+      return res.status(400).json({ error: 'Titel is verplicht' });
+    }
+    if (!trimmedArtist) {
+      return res.status(400).json({ error: 'Artiest is verplicht' });
+    }
+
+    const newCover = req.file ? req.file.filename : rows[0].cover_filename;
+    await db.execute(
+      'UPDATE tracks SET title = ?, artist = ?, album = ?, cover_filename = ? WHERE id = ?',
+      [trimmedTitle, trimmedArtist, album.trim(), newCover, trackId],
+    );
+
+    if (req.file && rows[0].cover_filename) {
+      const oldCoverPath = path.join(UPLOAD_DIR, rows[0].cover_filename);
+      if (fs.existsSync(oldCoverPath)) {
+        fs.unlinkSync(oldCoverPath);
+      }
+    }
+
+    const [updatedRows] = await db.query('SELECT id, title, artist, album, duration_seconds, filename, cover_filename, created_at FROM tracks WHERE id = ?', [trackId]);
+    res.json({ track: updatedRows[0] });
+  } catch (error) {
+    console.error('Track bewerken mislukt:', error.message);
+    res.status(500).json({ error: 'Kan track niet bijwerken' });
   }
 });
 
